@@ -1,17 +1,20 @@
 import { NavLink, Outlet } from "react-router-dom";
 
 const navItems = [
-  { label: "Dashboard", path: "/" },
-  { label: "Resources", path: "/resources" },
-  { label: "Bookings", path: "/bookings" },
-  { label: "Tickets", path: "/tickets" },
+  { label: "Dashboard", path: "/dashboard" },
+  { label: "Resources", path: "/dashboard/resources" },
+  { label: "Bookings", path: "/dashboard/bookings" },
+  { label: "Tickets", path: "/dashboard/tickets" },
 ];
 
 function MainLayout() {
   return (
     <div className="flex min-h-screen bg-slate-100 text-slate-800">
       <aside className="w-64 border-r border-slate-200 bg-slate-900 p-6 text-white">
-        <h1 className="mb-8 text-xl font-bold">Smart Campus</h1>
+        <div className="mb-8 flex items-center gap-3">
+          <img src="/zentro_logo.png" alt="Zentro Logo" className="h-8 w-auto rounded bg-white p-0.5" />
+          <h1 className="text-xl font-bold">Smart Campus</h1>
+        </div>
         <nav className="space-y-2">
           {navItems.map((item) => (
             <NavLink

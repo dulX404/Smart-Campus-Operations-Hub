@@ -80,6 +80,7 @@ Update the API base URL if needed.
 
 ```bash
 cd backend
+mvn clean install
 mvn spring-boot:run
 ```
 
@@ -87,8 +88,8 @@ mvn spring-boot:run
 
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ### Health Check
