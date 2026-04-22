@@ -1,0 +1,40 @@
+export const studentLinks = [
+  {
+    path: "/dashboard",
+    label: "Overview",
+    icon: "LayoutDashboard",
+  },
+  {
+    path: "/dashboard/resources",
+    label: "Resources",
+    icon: "Box",
+  },
+  {
+    path: "/dashboard/bookings",
+    label: "My Bookings",
+    icon: "Calendar",
+  },
+  {
+    path: "/dashboard/tickets",
+    label: "Support Tickets",
+    icon: "Ticket",
+  },
+  {
+    path: "/dashboard/notifications",
+    label: "Notifications",
+    icon: "Bell",
+  },
+];
+
+export const adminLinks = [
+  {
+    path: "/admin-dashboard",
+    label: "Admin Overview",
+    icon: "ShieldCheck",
+  },
+  {
+    path: "/admin-dashboard/notifications",
+    label: "Notifications",
+    icon: "Bell",
+  },
+];

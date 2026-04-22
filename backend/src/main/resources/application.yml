@@ -1,6 +1,8 @@
 spring:
   application:
     name: smart-campus-backend
+  config:
+    import: optional:file:./.env[.properties]
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017}
@@ -11,4 +13,4 @@ server:
 
 app:
   cors:
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000}

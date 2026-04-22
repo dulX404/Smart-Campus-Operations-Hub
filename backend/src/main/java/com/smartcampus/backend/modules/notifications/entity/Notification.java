@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -15,8 +17,10 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class Notification {
     @Id
     private String id;
-    private String userId;
     private String title;
     private String message;
-    private Boolean read;
+    private String targetRole; // ROLE_ADMIN, ROLE_STUDENT, or ALL
+    private String createdBy; // Admin email
+    private LocalDateTime createdAt;
+    private LocalDateTime scheduledAt;
 }
