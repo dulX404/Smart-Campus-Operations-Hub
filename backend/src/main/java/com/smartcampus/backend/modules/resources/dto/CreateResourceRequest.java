@@ -1,5 +1,6 @@
-package com.smartcampus.backend.modules.resources.entity;
+package com.smartcampus.backend.modules.resources.dto;
 
+import com.smartcampus.backend.modules.resources.entity.ResourceType;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,17 +9,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "resources")
-public class Resource {
-    @Id
-    private String id;
+public class CreateResourceRequest {
 
     @NotBlank(message = "Resource name is required")
     private String name;
@@ -33,13 +29,6 @@ public class Resource {
     private String location;
 
     private String description;
-
-    @Builder.Default
-    @NotNull(message = "Resource status is required")
-    private ResourceStatus status = ResourceStatus.ACTIVE;
-
     private LocalDateTime availabilityStart;
     private LocalDateTime availabilityEnd;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }
