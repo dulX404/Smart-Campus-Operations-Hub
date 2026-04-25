@@ -55,6 +55,12 @@ public class BookingController {
         return ResponseEntity.ok(ApiResponse.success("Pending bookings retrieved", bookings));
     }
 
+    @GetMapping("/resource/{resourceId}")
+    public ResponseEntity<ApiResponse<List<BookingDto>>> getBookingsForResource(@PathVariable String resourceId) {
+        List<BookingDto> bookings = bookingService.getBookingsForResource(resourceId);
+        return ResponseEntity.ok(ApiResponse.success("Resource bookings retrieved", bookings));
+    }
+
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<BookingDto>> approveBooking(

@@ -9,6 +9,7 @@ import com.smartcampus.backend.modules.notifications.service.NotificationService
 import com.smartcampus.backend.modules.resources.entity.Resource;
 import com.smartcampus.backend.modules.resources.repository.ResourceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ import java.util.NoSuchElementException;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BookingService {
 
     private final BookingRepository bookingRepository;
@@ -27,7 +29,41 @@ public class BookingService {
         Resource resource = resourceRepository.findById(request.getResourceId())
                 .orElseThrow(() -> new NoSuchElementException("Resource not found with id: " + request.getResourceId()));
 
+        // Validate for overlapping approved bookings
+        List<Booking> conflictingBookings = bookingRepository.findOverlappingApprovedBookings(
+                request.getResourceId(),
+                request.getStartTime(),
+                request.getEndTime()
+        );
+
+        if (!conflictingBookings.isEmpty()) {
+            log.warn("Booking conflict detected for resource {}: {} conflicting approved bookings found for time slot {}-{}",
+                request.getResourceId(), conflictingBookings.size(), request.getStartTime(), request.getEndTime());
+            throw new IllegalArgumentException(
+                "This time slot conflicts with " + conflictingBookings.size() +
+                " existing approved booking(s). Please choose a different time."
+            );
+        }
+
+        // Additional validation
         LocalDateTime now = LocalDateTime.now();
+        if (request.getStartTime().isBefore(now)) {
+            throw new IllegalArgumentException("Start time cannot be in the past.");
+        }
+
+        if (request.getEndTime().isBefore(request.getStartTime())) {
+            throw new IllegalArgumentException("End time must be after start time.");
+        }
+
+        // Check minimum duration (30 minutes)
+        if (request.getEndTime().isBefore(request.getStartTime().plusMinutes(30))) {
+            throw new IllegalArgumentException("Minimum booking duration is 30 minutes.");
+        }
+
+        // Check maximum duration (8 hours)
+        if (request.getEndTime().isAfter(request.getStartTime().plusHours(8))) {
+            throw new IllegalArgumentException("Maximum booking duration is 8 hours.");
+        }
 
         Booking booking = Booking.builder()
                 .userId(userId)
@@ -53,6 +89,13 @@ public class BookingService {
 
     public List<BookingDto> getAllBookings() {
         return bookingRepository.findAllByOrderByRequestedAtDesc()
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    public List<BookingDto> getBookingsForResource(String resourceId) {
+        return bookingRepository.findByResourceId(resourceId)
                 .stream()
                 .map(this::toDto)
                 .toList();

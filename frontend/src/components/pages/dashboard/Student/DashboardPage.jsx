@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMyBookings } from "../../../../api/bookings";
+import notificationService from "../../../../api/notificationService";
 
 function formatDateTime(value) {
   if (!value) return "-";
@@ -16,13 +17,19 @@ const statusConfig = {
 
 const StudentDashboardPage = () => {
   const [bookings, setBookings] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [seenNotificationIds, setSeenNotificationIds] = useState(new Set(JSON.parse(localStorage.getItem('seenNotifications') || '[]')));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const data = await getMyBookings();
-        setBookings(data.slice(0, 5));
+        const [bookingsData, notificationsData] = await Promise.all([
+          getMyBookings(),
+          notificationService.getNotifications().catch(() => ({ data: [] }))
+        ]);
+        setBookings(bookingsData.slice(0, 5));
+        setNotifications(notificationsData.data || []);
       } catch {
         // ignore
       } finally {
@@ -34,12 +41,39 @@ const StudentDashboardPage = () => {
 
   const upcomingApproved = bookings.filter((b) => b.status === "APPROVED");
   const pendingCount = bookings.filter((b) => b.status === "PENDING").length;
+  const unseenNotifications = notifications.filter((n) => !seenNotificationIds.has(n.id));
+  const unseenCount = unseenNotifications.length;
+  const hasBookingApproval = unseenNotifications.some((n) => n.title === "Booking Approved");
+
+  const markNotificationsAsSeen = () => {
+    const newSeenIds = new Set(seenNotificationIds);
+    unseenNotifications.forEach((n) => newSeenIds.add(n.id));
+    setSeenNotificationIds(newSeenIds);
+    localStorage.setItem('seenNotifications', JSON.stringify([...newSeenIds]));
+  };
 
   return (
     <div className="p-6">
       <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h2 className="text-2xl font-bold text-slate-800">Student Overview</h2>
-        <p className="mt-2 text-slate-600">Access your campus resources, book facilities, and track your requests.</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">Student Overview</h2>
+            <p className="mt-2 text-slate-600">Access your campus resources, book facilities, and track your requests.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link to="/dashboard/notifications" onClick={markNotificationsAsSeen} className="relative p-2 text-slate-600 hover:text-slate-800 transition-colors">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              {unseenCount > 0 && (
+                <span className={`absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white ${hasBookingApproval ? 'bg-green-500' : 'bg-red-500'}`}>
+                  {unseenCount > 9 ? '9+' : unseenCount}
+                </span>
+              )}
+            </Link>
+          </div>
+        </div>
 
         <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg border border-slate-100 bg-slate-50 p-6">
