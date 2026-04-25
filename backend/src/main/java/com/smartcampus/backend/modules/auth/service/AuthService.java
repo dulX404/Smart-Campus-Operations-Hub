@@ -63,21 +63,27 @@ public class AuthService {
     }
 
     public Object getProfile(String email) {
-        // Check Admin
         var admin = adminRepository.findByEmail(email);
-        if (admin.isPresent()) return registerAdmin(admin.get()); // Using registration mapping for simplicity, or create a dedicated mapper
+        if (admin.isPresent()) {
+            Admin a = admin.get();
+            return AdminDto.builder()
+                    .id(a.getId())
+                    .fullName(a.getFullName())
+                    .email(a.getEmail())
+                    .department(a.getDepartment())
+                    .build();
+        }
 
-        // Check Student
         var student = studentRepository.findByEmail(email);
         if (student.isPresent()) {
             Student s = student.get();
             return StudentDto.builder()
-                .id(s.getId())
-                .fullName(s.getFullName())
-                .email(s.getEmail())
-                .studentId(s.getStudentId())
-                .major(s.getMajor())
-                .build();
+                    .id(s.getId())
+                    .fullName(s.getFullName())
+                    .email(s.getEmail())
+                    .studentId(s.getStudentId())
+                    .major(s.getMajor())
+                    .build();
         }
         
         throw new RuntimeException("User not found");

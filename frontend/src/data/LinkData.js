@@ -33,6 +33,11 @@ export const adminLinks = [
     icon: "ShieldCheck",
   },
   {
+    path: "/admin-dashboard/resources",
+    label: "Facilities & Assets",
+    icon: "Box",
+  },
+  {
     path: "/admin-dashboard/notifications",
     label: "Notifications",
     icon: "Bell",

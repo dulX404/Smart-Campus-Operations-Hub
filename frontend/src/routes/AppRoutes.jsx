@@ -4,7 +4,7 @@ import LoginPage from "../components/pages/login/loginPage";
 import StudentDashboardPage from "../components/pages/dashboard/Student/DashboardPage";
 import AdminDashboardPage from "../components/pages/dashboard/Admin/DashboardPage";
 import BookingsPage from "../components/pages/bookings/BookingsPage";
-import ResourcesPage from "../components/pages/resources/ResourcesPage";
+import ResourcesPage from "../pages/Resources";
 import TicketsPage from "../components/pages/tickets/TicketsPage";
 import NotificationsPage from "../components/pages/notifications/NotificationsPage";
 import NotFoundPage from "../components/pages/notfound/NotFoundPage";
@@ -17,6 +17,10 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+      <Route element={<ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_STUDENT"]} />}>
+        <Route path="/resources" element={<ResourcesPage />} />
+      </Route>
 
       {/* Student Routes */}
       <Route element={<ProtectedRoute allowedRoles={["ROLE_STUDENT"]} />}>
@@ -33,6 +37,7 @@ function AppRoutes() {
       <Route element={<ProtectedRoute allowedRoles={["ROLE_ADMIN"]} />}>
         <Route path="/admin-dashboard" element={<MainLayout />}>
           <Route index element={<AdminDashboardPage />} />
+          <Route path="resources" element={<ResourcesPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
         </Route>
       </Route>
