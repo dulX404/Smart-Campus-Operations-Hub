@@ -19,6 +19,11 @@ export async function getAllBookings() {
   return unwrapResponse(response) ?? [];
 }
 
+export async function getBookingsForResource(resourceId) {
+  const response = await apiClient.get(`/bookings/resource/${resourceId}`);
+  return unwrapResponse(response) ?? [];
+}
+
 export async function getPendingBookings() {
   const response = await apiClient.get("/bookings/pending");
   return unwrapResponse(response) ?? [];
