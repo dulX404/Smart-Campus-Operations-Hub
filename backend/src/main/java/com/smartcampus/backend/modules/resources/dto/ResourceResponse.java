@@ -16,9 +16,10 @@ public class ResourceResponse {
     private String id;
     private String name;
     private ResourceType type;
-    private int capacity;
+    private Integer capacity;
     private String location;
     private String description;
+    private String imageUrl;
     private ResourceStatus status;
     private LocalDateTime availabilityStart;
     private LocalDateTime availabilityEnd;

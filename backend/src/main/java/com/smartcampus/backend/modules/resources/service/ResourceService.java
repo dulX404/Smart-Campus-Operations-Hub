@@ -21,13 +21,16 @@ public class ResourceService {
 
     public ResourceResponse createResource(CreateResourceRequest request) {
         LocalDateTime now = LocalDateTime.now();
+        validateMetadata(request.getType(), request.getCapacity(), request.getLocation());
+        boolean equipment = request.getType() == ResourceType.EQUIPMENT;
 
         Resource resource = Resource.builder()
                 .name(request.getName())
                 .type(request.getType())
-                .capacity(request.getCapacity())
-                .location(request.getLocation())
+                .capacity(equipment ? null : request.getCapacity())
+                .location(equipment ? null : request.getLocation())
                 .description(request.getDescription())
+                .imageUrl(equipment ? request.getImageUrl() : null)
                 .status(ResourceStatus.ACTIVE)
                 .availabilityStart(request.getAvailabilityStart())
                 .availabilityEnd(request.getAvailabilityEnd())
@@ -71,6 +74,9 @@ public class ResourceService {
         if (request.getDescription() != null) {
             resource.setDescription(request.getDescription());
         }
+        if (request.getImageUrl() != null) {
+            resource.setImageUrl(request.getImageUrl());
+        }
         if (request.getStatus() != null) {
             resource.setStatus(request.getStatus());
         }
@@ -83,6 +89,13 @@ public class ResourceService {
 
         if (resource.getStatus() == null) {
             resource.setStatus(ResourceStatus.ACTIVE);
+        }
+        if (resource.getType() == ResourceType.EQUIPMENT) {
+            resource.setCapacity(null);
+            resource.setLocation(null);
+        } else {
+            validateMetadata(resource.getType(), resource.getCapacity(), resource.getLocation());
+            resource.setImageUrl(null);
         }
 
         resource.setUpdatedAt(LocalDateTime.now());
@@ -122,10 +135,23 @@ public class ResourceService {
                 .filter(resource -> type == null || resource.getType() == type)
                 .filter(resource -> status == null || resource.getStatus() == status)
                 .filter(resource -> location == null || location.isBlank()
-                        || resource.getLocation().equalsIgnoreCase(location))
-                .filter(resource -> minCapacity == null || resource.getCapacity() >= minCapacity)
+                        || (resource.getLocation() != null && resource.getLocation().equalsIgnoreCase(location)))
+                .filter(resource -> minCapacity == null
+                        || (resource.getCapacity() != null && resource.getCapacity() >= minCapacity))
                 .map(this::toResponse)
                 .toList();
+    }
+
+    private void validateMetadata(ResourceType type, Integer capacity, String location) {
+        if (type == ResourceType.EQUIPMENT) {
+            return;
+        }
+        if (capacity == null || capacity < 1) {
+            throw new IllegalArgumentException("Capacity is required for this resource type");
+        }
+        if (location == null || location.isBlank()) {
+            throw new IllegalArgumentException("Location is required for this resource type");
+        }
     }
 
     private ResourceResponse toResponse(Resource resource) {
@@ -136,6 +162,7 @@ public class ResourceService {
                 .capacity(resource.getCapacity())
                 .location(resource.getLocation())
                 .description(resource.getDescription())
+                .imageUrl(resource.getImageUrl())
                 .status(resource.getStatus())
                 .availabilityStart(resource.getAvailabilityStart())
                 .availabilityEnd(resource.getAvailabilityEnd())

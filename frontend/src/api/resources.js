@@ -13,6 +13,11 @@ export async function getResources(filters = {}) {
   return unwrapResponse(response) ?? [];
 }
 
+export async function getResourceById(id) {
+  const response = await apiClient.get(`/resources/${id}`);
+  return unwrapResponse(response);
+}
+
 export async function createResource(payload) {
   const response = await apiClient.post("/resources", payload);
   return unwrapResponse(response);

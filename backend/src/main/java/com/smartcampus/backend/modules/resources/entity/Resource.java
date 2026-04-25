@@ -1,6 +1,5 @@
 package com.smartcampus.backend.modules.resources.entity;
 
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
@@ -26,13 +25,12 @@ public class Resource {
     @NotNull(message = "Resource type is required")
     private ResourceType type;
 
-    @Min(value = 1, message = "Capacity must be greater than 0")
-    private int capacity;
+    private Integer capacity;
 
-    @NotBlank(message = "Location is required")
     private String location;
 
     private String description;
+    private String imageUrl;
 
     @Builder.Default
     @NotNull(message = "Resource status is required")

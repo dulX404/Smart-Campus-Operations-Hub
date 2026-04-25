@@ -112,4 +112,15 @@ public class ResourceController {
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Object>> handleBadRequest(IllegalArgumentException exception) {
+        ApiResponse<Object> response = ApiResponse.builder()
+                .success(false)
+                .message(exception.getMessage())
+                .data(null)
+                .build();
+
+        return ResponseEntity.badRequest().body(response);
+    }
 }

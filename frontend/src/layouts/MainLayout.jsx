@@ -1,46 +1,26 @@
-import { NavLink, Outlet } from "react-router-dom";
-
-const navItems = [
-  { label: "Dashboard", path: "/" },
-  { label: "Resources", path: "/resources" },
-  { label: "Bookings", path: "/bookings" },
-  { label: "Tickets", path: "/tickets" },
-];
+import { Outlet } from "react-router-dom";
+import PageHeader from "../common/PageHeader.jsx";
+import Sidebar from "../common/Sidebar";
+import { useAuth } from "../context/AuthContext";
 
 function MainLayout() {
+  const { user } = useAuth();
+  
+  // Determine header content based on user role
+  const isAdmin = user?.role?.includes("ADMIN");
+  const title = isAdmin ? "Admin Command Center" : "Student Hub";
+  const description = isAdmin 
+    ? `Welcome back, Administrator ${user?.sub || ""}`
+    : `Welcome back, ${user?.sub || ""}`;
+
   return (
-    <div className="flex min-h-screen bg-slate-100 text-slate-800">
-      <aside className="w-64 border-r border-slate-200 bg-slate-900 p-6 text-white">
-        <h1 className="mb-8 text-xl font-bold">Smart Campus</h1>
-        <nav className="space-y-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === "/"}
-              className={({ isActive }) =>
-                `block rounded-lg px-4 py-2 transition ${
-                  isActive ? "bg-white text-slate-900" : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </aside>
+    <div className="flex min-h-screen w-full text-slate-800">
+      <Sidebar />
 
-      <div className="flex flex-1 flex-col">
-        <header className="border-b border-slate-200 bg-white px-6 py-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Operations Hub</h2>
-            <div className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
-              Team Starter Layout
-            </div>
-          </div>
-        </header>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <PageHeader title={title} description={description} />
 
-        <main className="flex-1 p-6">
+        <main className="min-w-0 flex-1">
           <Outlet />
         </main>
       </div>
