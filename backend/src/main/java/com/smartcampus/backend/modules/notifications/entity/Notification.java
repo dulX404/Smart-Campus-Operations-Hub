@@ -20,7 +20,8 @@ public class Notification {
     private String title;
     private String message;
     private String targetRole; // ROLE_ADMIN, ROLE_STUDENT, or ALL
-    private String createdBy; // Admin email
+    private String userId;     // Specific user target (optional)
+    private String createdBy;  // Admin email
     private LocalDateTime createdAt;
     private LocalDateTime scheduledAt;
 }

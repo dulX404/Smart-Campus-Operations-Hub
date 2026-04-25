@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -16,8 +18,17 @@ public class Booking {
     @Id
     private String id;
     private String userId;
+    private String userEmail;
     private String resourceId;
-    private String startTime;
-    private String endTime;
-    private String status;
+    private String resourceName;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
+    private String purpose;
+
+    @Builder.Default
+    private BookingStatus status = BookingStatus.PENDING;
+
+    private LocalDateTime requestedAt;
+    private LocalDateTime approvedAt;
+    private String adminNotes;
 }

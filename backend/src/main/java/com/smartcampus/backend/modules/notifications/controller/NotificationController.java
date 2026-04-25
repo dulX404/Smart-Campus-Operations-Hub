@@ -20,13 +20,14 @@ public class NotificationController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<Notification>>> getMyNotifications(Authentication authentication) {
         String role = authentication.getAuthorities().iterator().next().getAuthority();
+        String userId = authentication.getName(); // email/username from JWT
         
         // If Admin, show EVERYTHING (including future scheduled ones)
         if (role.equals("ROLE_ADMIN")) {
             return ResponseEntity.ok(ApiResponse.success("All notifications fetched", service.getAllNotifications()));
         }
         
-        return ResponseEntity.ok(ApiResponse.success("Notifications fetched", service.getNotificationsForUser(role)));
+        return ResponseEntity.ok(ApiResponse.success("Notifications fetched", service.getNotificationsForUser(role, userId)));
     }
 
     @PostMapping

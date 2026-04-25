@@ -38,6 +38,11 @@ export const adminLinks = [
     icon: "Box",
   },
   {
+    path: "/admin-dashboard/bookings",
+    label: "Booking Requests",
+    icon: "Calendar",
+  },
+  {
     path: "/admin-dashboard/notifications",
     label: "Notifications",
     icon: "Bell",
