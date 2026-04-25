@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../common/toast";
 import {
   createResource,
   deleteResource,
   getResources,
   updateResource,
 } from "../api/resources";
-import { createBooking } from "../api/bookings";
+import { createBooking, getAllBookings, getBookingsForResource } from "../api/bookings";
+import { validateBooking } from "../components/pages/bookings/validator/validator";
 
 const resourceTypes = ["LECTURE_HALL", "LAB", "MEETING_ROOM", "EQUIPMENT"];
 const resourceStatuses = ["ACTIVE", "OUT_OF_SERVICE"];
@@ -116,9 +118,11 @@ function Icon({ children }) {
 
 function Resources() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const isAdmin = user?.role?.includes("ADMIN");
 
   const [resources, setResources] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [filters, setFilters] = useState(emptyFilters);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState(emptyForm);
@@ -133,12 +137,79 @@ function Resources() {
   const [bookingResource, setBookingResource] = useState(null);
   const [bookingForm, setBookingForm] = useState(emptyBookingForm);
   const [bookingSaving, setBookingSaving] = useState(false);
+  const [existingBookings, setExistingBookings] = useState([]);
+  const [bookingErrors, setBookingErrors] = useState({});
 
   const isEquipment = form.type === "EQUIPMENT";
 
   useEffect(() => {
     loadResources(filters);
+    loadBookings();
   }, [filters]);
+
+  const loadBookings = async () => {
+    try {
+      const response = await getAllBookings();
+      if (response.success) {
+        setBookings(response.data || []);
+      }
+    } catch (error) {
+      console.error("Failed to load bookings:", error);
+    }
+  };
+
+  const loadBookingsForResource = async (resourceId) => {
+    try {
+      const response = await getBookingsForResource(resourceId);
+      if (response.success) {
+        return response.data || [];
+      }
+    } catch (error) {
+      console.error("Failed to load bookings for resource:", error);
+      return [];
+    }
+    return [];
+  };
+
+  const getResourceBookingStatus = (resourceId) => {
+    const resourceBookings = bookings.filter(b => b.resourceId === resourceId && b.status === 'APPROVED');
+    const now = new Date();
+
+    // Find the next upcoming booking
+    const upcomingBookings = resourceBookings
+      .filter(b => new Date(b.endTime) > now)
+      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+    if (upcomingBookings.length > 0) {
+      const nextBooking = upcomingBookings[0];
+      return {
+        status: 'booked',
+        nextAvailable: formatDateTime(nextBooking.endTime),
+        message: `Booked until ${formatDateTime(nextBooking.endTime)}`
+      };
+    }
+
+    // Check if currently occupied
+    const currentBookings = resourceBookings.filter(b =>
+      new Date(b.startTime) <= now && new Date(b.endTime) > now
+    );
+
+    if (currentBookings.length > 0) {
+      return {
+        status: 'occupied',
+        nextAvailable: formatDateTime(currentBookings[0].endTime),
+        message: `Currently occupied until ${formatDateTime(currentBookings[0].endTime)}`
+      };
+    }
+
+    return {
+      status: 'available',
+      nextAvailable: null,
+      message: 'Available now'
+    };
+  };
+
+
 
   const visibleResources = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -281,37 +352,38 @@ function Resources() {
   }
 
   // Booking handlers
-  function openBookingModal(resource) {
+  async function openBookingModal(resource) {
     setBookingResource(resource);
     setBookingForm(emptyBookingForm);
+    setBookingErrors({});
     setBookingModalOpen(true);
-    setError("");
-    setSuccess("");
+
+    // Load existing bookings for this resource specifically
+    const resourceBookings = await loadBookingsForResource(resource.id);
+    setExistingBookings(resourceBookings);
   }
 
   function closeBookingModal() {
     setBookingModalOpen(false);
     setBookingResource(null);
     setBookingForm(emptyBookingForm);
+    setBookingErrors({});
+    setExistingBookings([]);
   }
 
   async function handleBookingSubmit(event) {
     event.preventDefault();
     setError("");
     setSuccess("");
+    setBookingErrors({});
 
-    if (!bookingForm.startTime || !bookingForm.endTime) {
-      setError("Please select both start and end time.");
-      return;
-    }
-
-    if (new Date(bookingForm.startTime) >= new Date(bookingForm.endTime)) {
-      setError("End time must be after start time.");
-      return;
-    }
-
-    if (!bookingForm.purpose.trim()) {
-      setError("Please provide a purpose for the booking.");
+    // Use the validator
+    const validation = validateBooking(bookingForm, existingBookings);
+    if (!validation.isValid) {
+      setBookingErrors(validation.errors);
+      // Show validation errors as toast
+      const firstError = Object.values(validation.errors)[0];
+      showToast(firstError, "error");
       return;
     }
 
@@ -324,10 +396,12 @@ function Resources() {
         endTime: bookingForm.endTime,
         purpose: bookingForm.purpose.trim(),
       });
-      setSuccess("Booking request submitted successfully!");
+
+      showToast("Booking request submitted successfully!");
       setTimeout(() => closeBookingModal(), 1500);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to submit booking request.");
+      const errorMessage = err.response?.data?.message || "Failed to submit booking request.";
+      showToast(errorMessage, "error");
     } finally {
       setBookingSaving(false);
     }
@@ -710,6 +784,7 @@ function Resources() {
                         <Meta label="Location" value={resource.type === "EQUIPMENT" ? "Not applicable" : resource.location || "-"} />
                         <Meta label="Available From" value={formatDateTime(resource.availabilityStart)} />
                         <Meta label="Available Until" value={formatDateTime(resource.availabilityEnd)} />
+                        <Meta label="Booking Status" value={getResourceBookingStatus(resource.id).message} />
                       </div>
                     </article>
                   ))}
@@ -736,40 +811,77 @@ function Resources() {
               </button>
             </div>
 
-            <form onSubmit={handleBookingSubmit} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Start Time</label>
-                  <input
-                    type="datetime-local"
-                    required
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    value={bookingForm.startTime}
-                    onChange={(e) => setBookingForm((prev) => ({ ...prev, startTime: e.target.value }))}
-                  />
+            <form onSubmit={handleBookingSubmit} className="space-y-6">
+              {/* Time Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-3">
+                  Booking Time
+                </label>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
+                      Start Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      className={`w-full rounded-lg border px-3 py-3 text-sm outline-none transition focus:ring-2 focus:ring-blue-100 ${
+                        bookingErrors.startTime ? 'border-red-500 focus:border-red-500' : 'border-slate-300 focus:border-blue-500'
+                      }`}
+                      value={bookingForm.startTime}
+                      onChange={(e) => setBookingForm((prev) => ({ ...prev, startTime: e.target.value }))}
+                      min={new Date().toISOString().slice(0, 16)}
+                    />
+                    {bookingErrors.startTime && (
+                      <p className="mt-1 text-xs text-red-600">{bookingErrors.startTime}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
+                      End Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      className={`w-full rounded-lg border px-3 py-3 text-sm outline-none transition focus:ring-2 focus:ring-blue-100 ${
+                        bookingErrors.endTime ? 'border-red-500 focus:border-red-500' : 'border-slate-300 focus:border-blue-500'
+                      }`}
+                      value={bookingForm.endTime}
+                      onChange={(e) => setBookingForm((prev) => ({ ...prev, endTime: e.target.value }))}
+                      min={bookingForm.startTime || new Date().toISOString().slice(0, 16)}
+                    />
+                    {bookingErrors.endTime && (
+                      <p className="mt-1 text-xs text-red-600">{bookingErrors.endTime}</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">End Time</label>
-                  <input
-                    type="datetime-local"
-                    required
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    value={bookingForm.endTime}
-                    onChange={(e) => setBookingForm((prev) => ({ ...prev, endTime: e.target.value }))}
-                  />
-                </div>
+                {bookingForm.startTime && bookingForm.endTime && (
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-800">
+                      <strong>Duration:</strong> {Math.round((new Date(bookingForm.endTime) - new Date(bookingForm.startTime)) / (1000 * 60))} minutes
+                    </p>
+                  </div>
+                )}
               </div>
 
+              {/* Purpose */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Purpose</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Purpose
+                </label>
                 <textarea
-                  rows="3"
+                  rows="4"
                   required
-                  placeholder="Describe the purpose of your booking..."
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  placeholder="Please describe the purpose of your booking (e.g., study group, meeting, event)..."
+                  className={`w-full rounded-lg border px-3 py-3 text-sm outline-none transition focus:ring-2 focus:ring-blue-100 ${
+                    bookingErrors.purpose ? 'border-red-500 focus:border-red-500' : 'border-slate-300 focus:border-blue-500'
+                  }`}
                   value={bookingForm.purpose}
                   onChange={(e) => setBookingForm((prev) => ({ ...prev, purpose: e.target.value }))}
                 />
+                {bookingErrors.purpose && (
+                  <p className="mt-1 text-xs text-red-600">{bookingErrors.purpose}</p>
+                )}
               </div>
 
               <div className="flex gap-3 pt-4">
