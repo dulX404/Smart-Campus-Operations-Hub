@@ -9,4 +9,6 @@ public interface NotificationRepository extends MongoRepository<Notification, St
     List<Notification> findByTargetRoleInOrderByCreatedAtDesc(List<String> targetRoles);
     
     List<Notification> findByTargetRoleInAndScheduledAtBeforeOrderByCreatedAtDesc(List<String> targetRoles, LocalDateTime now);
+
+    List<Notification> findByUserIdAndScheduledAtBeforeOrderByCreatedAtDesc(String userId, LocalDateTime now);
 }

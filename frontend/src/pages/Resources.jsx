@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import {
   createResource,
   deleteResource,
   getResources,
   updateResource,
 } from "../api/resources";
+import { createBooking } from "../api/bookings";
 
 const resourceTypes = ["LECTURE_HALL", "LAB", "MEETING_ROOM", "EQUIPMENT"];
 const resourceStatuses = ["ACTIVE", "OUT_OF_SERVICE"];
@@ -26,6 +28,12 @@ const emptyFilters = {
   status: "",
   location: "",
   minCapacity: "",
+};
+
+const emptyBookingForm = {
+  startTime: "",
+  endTime: "",
+  purpose: "",
 };
 
 function cleanParams(values) {
@@ -58,6 +66,14 @@ function getTypeAccent(type) {
   };
 
   return accents[type] || "bg-slate-50 text-slate-700 ring-slate-200";
+}
+
+function getStatusAccent(status) {
+  if (status === "APPROVED") return "bg-emerald-50 text-emerald-700 ring-emerald-200";
+  if (status === "PENDING") return "bg-amber-50 text-amber-700 ring-amber-200";
+  if (status === "REJECTED") return "bg-red-50 text-red-700 ring-red-200";
+  if (status === "CANCELLED") return "bg-slate-50 text-slate-700 ring-slate-200";
+  return "bg-slate-50 text-slate-700 ring-slate-200";
 }
 
 function toPayload(form) {
@@ -99,6 +115,9 @@ function Icon({ children }) {
 }
 
 function Resources() {
+  const { user } = useAuth();
+  const isAdmin = user?.role?.includes("ADMIN");
+
   const [resources, setResources] = useState([]);
   const [filters, setFilters] = useState(emptyFilters);
   const [search, setSearch] = useState("");
@@ -108,6 +127,12 @@ function Resources() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Booking modal state
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [bookingResource, setBookingResource] = useState(null);
+  const [bookingForm, setBookingForm] = useState(emptyBookingForm);
+  const [bookingSaving, setBookingSaving] = useState(false);
 
   const isEquipment = form.type === "EQUIPMENT";
 
@@ -255,6 +280,59 @@ function Resources() {
     }
   }
 
+  // Booking handlers
+  function openBookingModal(resource) {
+    setBookingResource(resource);
+    setBookingForm(emptyBookingForm);
+    setBookingModalOpen(true);
+    setError("");
+    setSuccess("");
+  }
+
+  function closeBookingModal() {
+    setBookingModalOpen(false);
+    setBookingResource(null);
+    setBookingForm(emptyBookingForm);
+  }
+
+  async function handleBookingSubmit(event) {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (!bookingForm.startTime || !bookingForm.endTime) {
+      setError("Please select both start and end time.");
+      return;
+    }
+
+    if (new Date(bookingForm.startTime) >= new Date(bookingForm.endTime)) {
+      setError("End time must be after start time.");
+      return;
+    }
+
+    if (!bookingForm.purpose.trim()) {
+      setError("Please provide a purpose for the booking.");
+      return;
+    }
+
+    setBookingSaving(true);
+
+    try {
+      await createBooking({
+        resourceId: bookingResource.id,
+        startTime: bookingForm.startTime,
+        endTime: bookingForm.endTime,
+        purpose: bookingForm.purpose.trim(),
+      });
+      setSuccess("Booking request submitted successfully!");
+      setTimeout(() => closeBookingModal(), 1500);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to submit booking request.");
+    } finally {
+      setBookingSaving(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -264,21 +342,24 @@ function Resources() {
               <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Module A</p>
               <h1 className="mt-2 text-3xl font-bold text-slate-950">Facilities & Assets Catalogue</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Maintain bookable lecture halls, labs, meeting rooms, and shared equipment with availability,
-                operating status, and searchable metadata.
+                {isAdmin
+                  ? "Maintain bookable lecture halls, labs, meeting rooms, and shared equipment with availability, operating status, and searchable metadata."
+                  : "Browse available campus resources and book facilities for your needs."}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={resetForm}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
-            >
-              <Icon>
-                <path d="M12 5v14" />
-                <path d="M5 12h14" />
-              </Icon>
-              New Resource
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+              >
+                <Icon>
+                  <path d="M12 5v14" />
+                  <path d="M5 12h14" />
+                </Icon>
+                New Resource
+              </button>
+            )}
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -299,163 +380,165 @@ function Resources() {
           </div>
         )}
 
-        <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-slate-950">
-                  {editingId ? "Edit Resource" : "Add Resource"}
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {isEquipment ? "Equipment does not need capacity or location." : "Rooms require capacity and location."}
-                </p>
+        <div className={`grid gap-6 ${isAdmin ? "xl:grid-cols-[380px_minmax(0,1fr)]" : ""}`}>
+          {isAdmin && (
+            <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-950">
+                    {editingId ? "Edit Resource" : "Add Resource"}
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {isEquipment ? "Equipment does not need capacity or location." : "Rooms require capacity and location."}
+                  </p>
+                </div>
+                {editingId && (
+                  <button type="button" onClick={resetForm} className="text-sm font-medium text-slate-500 hover:text-slate-900">
+                    Clear
+                  </button>
+                )}
               </div>
-              {editingId && (
-                <button type="button" onClick={resetForm} className="text-sm font-medium text-slate-500 hover:text-slate-900">
-                  Clear
-                </button>
-              )}
-            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Field label="Resource Name">
-                <input
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  placeholder="e.g. Main Auditorium"
-                  value={form.name}
-                  onChange={(event) => updateForm("name", event.target.value)}
-                />
-              </Field>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <Field label="Resource Name">
+                  <input
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    placeholder="e.g. Main Auditorium"
+                    value={form.name}
+                    onChange={(event) => updateForm("name", event.target.value)}
+                  />
+                </Field>
 
-              <Field label="Type">
-                <div className="grid grid-cols-2 gap-2">
-                  {resourceTypes.map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => handleTypeChange(type)}
-                      className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition ${
-                        form.type === type
-                          ? "border-slate-950 bg-slate-950 text-white"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
-                      }`}
-                    >
-                      {formatLabel(type)}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-
-              {!isEquipment && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Capacity">
-                    <input
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      min="1"
-                      placeholder="80"
-                      type="number"
-                      value={form.capacity}
-                      onChange={(event) => updateForm("capacity", event.target.value)}
-                    />
-                  </Field>
-
-                  <Field label="Location">
-                    <input
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      placeholder="Block A, Floor 2"
-                      value={form.location}
-                      onChange={(event) => updateForm("location", event.target.value)}
-                    />
-                  </Field>
-                </div>
-              )}
-
-              {isEquipment && (
-                <Field label="Equipment Photo">
-                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
-                    {form.imageUrl ? (
-                      <img
-                        src={form.imageUrl}
-                        alt="Equipment preview"
-                        className="mb-3 h-40 w-full rounded-lg object-cover"
-                      />
-                    ) : (
-                      <div className="mb-3 flex h-40 items-center justify-center rounded-lg bg-white text-sm text-slate-400">
-                        No photo selected
-                      </div>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      <label className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-                        Upload Photo
-                        <input className="hidden" type="file" accept="image/*" onChange={handleImageUpload} />
-                      </label>
-                      {form.imageUrl && (
-                        <button
-                          type="button"
-                          onClick={() => updateForm("imageUrl", "")}
-                          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
+                <Field label="Type">
+                  <div className="grid grid-cols-2 gap-2">
+                    {resourceTypes.map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => handleTypeChange(type)}
+                        className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition ${
+                          form.type === type
+                            ? "border-slate-950 bg-slate-950 text-white"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                        }`}
+                      >
+                        {formatLabel(type)}
+                      </button>
+                    ))}
                   </div>
                 </Field>
-              )}
 
-              <Field label="Status">
-                <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  value={form.status}
-                  onChange={(event) => updateForm("status", event.target.value)}
+                {!isEquipment && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Capacity">
+                      <input
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        min="1"
+                        placeholder="80"
+                        type="number"
+                        value={form.capacity}
+                        onChange={(event) => updateForm("capacity", event.target.value)}
+                      />
+                    </Field>
+
+                    <Field label="Location">
+                      <input
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        placeholder="Block A, Floor 2"
+                        value={form.location}
+                        onChange={(event) => updateForm("location", event.target.value)}
+                      />
+                    </Field>
+                  </div>
+                )}
+
+                {isEquipment && (
+                  <Field label="Equipment Photo">
+                    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+                      {form.imageUrl ? (
+                        <img
+                          src={form.imageUrl}
+                          alt="Equipment preview"
+                          className="mb-3 h-40 w-full rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="mb-3 flex h-40 items-center justify-center rounded-lg bg-white text-sm text-slate-400">
+                          No photo selected
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <label className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                          Upload Photo
+                          <input className="hidden" type="file" accept="image/*" onChange={handleImageUpload} />
+                        </label>
+                        {form.imageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => updateForm("imageUrl", "")}
+                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </Field>
+                )}
+
+                <Field label="Status">
+                  <select
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    value={form.status}
+                    onChange={(event) => updateForm("status", event.target.value)}
+                  >
+                    {resourceStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {formatLabel(status)}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="Description">
+                  <textarea
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    placeholder="Useful details, included equipment, notes..."
+                    rows="3"
+                    value={form.description}
+                    onChange={(event) => updateForm("description", event.target.value)}
+                  />
+                </Field>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Available From">
+                    <input
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      type="datetime-local"
+                      value={form.availabilityStart}
+                      onChange={(event) => updateForm("availabilityStart", event.target.value)}
+                    />
+                  </Field>
+
+                  <Field label="Available Until">
+                    <input
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      type="datetime-local"
+                      value={form.availabilityEnd}
+                      onChange={(event) => updateForm("availabilityEnd", event.target.value)}
+                    />
+                  </Field>
+                </div>
+
+                <button
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={saving}
+                  type="submit"
                 >
-                  {resourceStatuses.map((status) => (
-                    <option key={status} value={status}>
-                      {formatLabel(status)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Description">
-                <textarea
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  placeholder="Useful details, included equipment, notes..."
-                  rows="3"
-                  value={form.description}
-                  onChange={(event) => updateForm("description", event.target.value)}
-                />
-              </Field>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Available From">
-                  <input
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    type="datetime-local"
-                    value={form.availabilityStart}
-                    onChange={(event) => updateForm("availabilityStart", event.target.value)}
-                  />
-                </Field>
-
-                <Field label="Available Until">
-                  <input
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    type="datetime-local"
-                    value={form.availabilityEnd}
-                    onChange={(event) => updateForm("availabilityEnd", event.target.value)}
-                  />
-                </Field>
-              </div>
-
-              <button
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={saving}
-                type="submit"
-              >
-                {saving ? "Saving..." : editingId ? "Save Changes" : "Add to Catalogue"}
-              </button>
-            </form>
-          </section>
+                  {saving ? "Saving..." : editingId ? "Save Changes" : "Add to Catalogue"}
+                </button>
+              </form>
+            </section>
+          )}
 
           <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-200 p-5">
@@ -555,7 +638,7 @@ function Resources() {
                           </div>
                         )}
 
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="truncate text-base font-bold text-slate-950">{resource.name}</h3>
                             <span className={`rounded-full px-2 py-1 text-xs font-bold ring-1 ${getTypeAccent(resource.type)}`}>
@@ -577,29 +660,48 @@ function Resources() {
                         </div>
 
                         <div className="flex shrink-0 items-center gap-2">
-                          <button
-                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                            type="button"
-                            onClick={() => handleEdit(resource)}
-                          >
-                            <Icon>
-                              <path d="M12 20h9" />
-                              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                            </Icon>
-                            Edit
-                          </button>
-                          <button
-                            className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
-                            type="button"
-                            onClick={() => handleDelete(resource.id)}
-                          >
-                            <Icon>
-                              <path d="M3 6h18" />
-                              <path d="M8 6V4h8v2" />
-                              <path d="M19 6l-1 14H6L5 6" />
-                            </Icon>
-                            Delete
-                          </button>
+                          {isAdmin ? (
+                            <>
+                              <button
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                type="button"
+                                onClick={() => handleEdit(resource)}
+                              >
+                                <Icon>
+                                  <path d="M12 20h9" />
+                                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                                </Icon>
+                                Edit
+                              </button>
+                              <button
+                                className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                                type="button"
+                                onClick={() => handleDelete(resource.id)}
+                              >
+                                <Icon>
+                                  <path d="M3 6h18" />
+                                  <path d="M8 6V4h8v2" />
+                                  <path d="M19 6l-1 14H6L5 6" />
+                                </Icon>
+                                Delete
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-50"
+                              type="button"
+                              onClick={() => openBookingModal(resource)}
+                              disabled={resource.status !== "ACTIVE"}
+                            >
+                              <Icon>
+                                <path d="M8 2v4" />
+                                <path d="M16 2v4" />
+                                <rect width="18" height="18" x="3" y="4" rx="2" />
+                                <path d="M3 10h18" />
+                              </Icon>
+                              {resource.status === "ACTIVE" ? "Book Resource" : "Unavailable"}
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -617,6 +719,79 @@ function Resources() {
           </section>
         </div>
       </div>
+
+      {/* Booking Modal */}
+      {bookingModalOpen && bookingResource && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Book Resource</h3>
+                <p className="text-sm text-slate-500 mt-1">{bookingResource.name}</p>
+              </div>
+              <button onClick={closeBookingModal} className="text-slate-400 hover:text-slate-600">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleBookingSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Start Time</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    value={bookingForm.startTime}
+                    onChange={(e) => setBookingForm((prev) => ({ ...prev, startTime: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">End Time</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    value={bookingForm.endTime}
+                    onChange={(e) => setBookingForm((prev) => ({ ...prev, endTime: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Purpose</label>
+                <textarea
+                  rows="3"
+                  required
+                  placeholder="Describe the purpose of your booking..."
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  value={bookingForm.purpose}
+                  onChange={(e) => setBookingForm((prev) => ({ ...prev, purpose: e.target.value }))}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={closeBookingModal}
+                  className="flex-1 rounded-lg px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={bookingSaving}
+                  className="flex-1 rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white shadow-md hover:bg-blue-800 transition disabled:opacity-50"
+                >
+                  {bookingSaving ? "Submitting..." : "Submit Request"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
