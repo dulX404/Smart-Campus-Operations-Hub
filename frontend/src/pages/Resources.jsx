@@ -467,15 +467,15 @@ function Resources() {
                   </p>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[240px_160px_160px_160px_140px]">
+                <div className="flex w-full flex-wrap gap-3 xl:max-w-4xl xl:justify-end">
                   <input
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="min-w-0 flex-[1_1_220px] rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     placeholder="Search catalogue"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
                   <select
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="min-w-0 flex-[1_1_150px] rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     value={filters.type}
                     onChange={(event) => updateFilter("type", event.target.value)}
                   >
@@ -487,7 +487,7 @@ function Resources() {
                     ))}
                   </select>
                   <select
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="min-w-0 flex-[1_1_150px] rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     value={filters.status}
                     onChange={(event) => updateFilter("status", event.target.value)}
                   >
@@ -499,13 +499,13 @@ function Resources() {
                     ))}
                   </select>
                   <input
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="min-w-0 flex-[1_1_150px] rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     placeholder="Location"
                     value={filters.location}
                     onChange={(event) => updateFilter("location", event.target.value)}
                   />
                   <input
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="min-w-0 flex-[1_1_120px] rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     min="1"
                     placeholder="Min cap."
                     type="number"
