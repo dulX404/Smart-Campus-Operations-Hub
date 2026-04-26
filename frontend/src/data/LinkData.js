@@ -43,6 +43,11 @@ export const adminLinks = [
     icon: "Calendar",
   },
   {
+    path: "/admin-dashboard/tickets",
+    label: "Incident Tickets",
+    icon: "Ticket",
+  },
+  {
     path: "/admin-dashboard/notifications",
     label: "Notifications",
     icon: "Bell",

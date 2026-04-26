@@ -5,6 +5,7 @@ import StudentDashboardPage from "../components/pages/dashboard/Student/Dashboar
 import AdminDashboardPage from "../components/pages/dashboard/Admin/DashboardPage";
 import BookingsPage from "../components/pages/bookings/BookingsPage";
 import BookingRequestsPage from "../components/pages/admin/BookingRequestsPage";
+import TicketManagementPage from "../components/pages/admin/TicketManagementPage";
 import ResourcesPage from "../pages/Resources";
 import TicketsPage from "../components/pages/tickets/TicketsPage";
 import NotificationsPage from "../components/pages/notifications/NotificationsPage";
@@ -41,6 +42,7 @@ function AppRoutes() {
           <Route index element={<AdminDashboardPage />} />
           <Route path="resources" element={<ResourcesPage />} />
           <Route path="bookings" element={<BookingRequestsPage />} />
+          <Route path="tickets" element={<TicketManagementPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
         </Route>
       </Route>

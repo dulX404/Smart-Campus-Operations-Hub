@@ -1,5 +1,6 @@
 package com.smartcampus.backend.modules.tickets.comment;
 
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,9 @@ public class Comment {
     @Id
     private String id;
     private String ticketId;
-    private String userId;
+    private String authorEmail;
+    private String authorRole;
     private String content;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
