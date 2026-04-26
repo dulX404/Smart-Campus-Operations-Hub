@@ -43,3 +43,8 @@ export async function cancelBooking(id) {
   const response = await apiClient.post(`/bookings/${id}/cancel`);
   return unwrapResponse(response);
 }
+
+export async function deleteBooking(id) {
+  const response = await apiClient.delete(`/bookings/${id}`);
+  return unwrapResponse(response);
+}
