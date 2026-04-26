@@ -1,5 +1,8 @@
 package com.smartcampus.backend.modules.tickets.entity;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,8 +18,25 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class Ticket {
     @Id
     private String id;
-    private String userId;
-    private String title;
+    private String createdByEmail;
+    private String resourceId;
+    private String resourceName;
+    private String location;
+    private TicketCategory category;
     private String description;
-    private String status;
+    private TicketPriority priority;
+    private String preferredContactName;
+    private String preferredContactEmail;
+    private String preferredContactPhone;
+    @Builder.Default
+    private List<TicketAttachment> attachments = new ArrayList<>();
+    @Builder.Default
+    private TicketStatus status = TicketStatus.OPEN;
+    private String assignedToEmail;
+    private String resolutionNotes;
+    private String rejectionReason;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private LocalDateTime resolvedAt;
+    private LocalDateTime closedAt;
 }
