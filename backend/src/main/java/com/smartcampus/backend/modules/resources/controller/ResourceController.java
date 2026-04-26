@@ -13,6 +13,7 @@ import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +31,23 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class ResourceController {
 
     private final ResourceService resourceService;
+
+    @GetMapping("/admin/manage")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> manageResources() {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Admin resource management access granted",
+                "Resource management endpoint is available"
+        ));
+    }
+
+    @GetMapping("/public")
+    public ResponseEntity<ApiResponse<String>> getPublicResources() {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Public resources endpoint is available",
+                "Use GET /api/resources to retrieve the resource catalogue"
+        ));
+    }
 
     @PostMapping
     public ResponseEntity<ApiResponse<ResourceResponse>> createResource(
