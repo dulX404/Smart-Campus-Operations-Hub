@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
-import { getMyBookings, cancelBooking } from "../../../api/bookings";
+import { getMyBookings, cancelBooking, deleteBooking } from "../../../api/bookings";
 
 const statusConfig = {
   PENDING: { label: "Pending", className: "bg-amber-50 text-amber-700 ring-amber-200" },
@@ -28,6 +28,7 @@ const BookingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancellingId, setCancellingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     loadBookings();
@@ -57,6 +58,20 @@ const BookingsPage = () => {
       setError(err.response?.data?.message || "Failed to cancel booking.");
     } finally {
       setCancellingId(null);
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm("Are you sure you want to permanently delete this booking?")) return;
+    setDeletingId(id);
+    setError("");
+    try {
+      await deleteBooking(id);
+      await loadBookings();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to delete booking.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -157,6 +172,18 @@ const BookingsPage = () => {
                               <path d="M6 6l12 12" />
                             </Icon>
                             {cancellingId === booking.id ? "Cancelling..." : "Cancel"}
+                          </button>
+                        )}
+                        {(booking.status === "CANCELLED" || booking.status === "REJECTED") && (
+                          <button
+                            onClick={() => handleDelete(booking.id)}
+                            disabled={deletingId === booking.id}
+                            className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            <Icon>
+                              <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 2 2v4M9 3v18m0 0h10a2 2 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9" />
+                            </Icon>
+                            {deletingId === booking.id ? "Deleting..." : "Delete"}
                           </button>
                         )}
                       </div>

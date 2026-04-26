@@ -89,6 +89,16 @@ public class BookingController {
         return ResponseEntity.ok(ApiResponse.success("Booking cancelled successfully", booking));
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<Void>> deleteBooking(
+            @PathVariable String id,
+            Authentication authentication) {
+        String userId = authentication.getName();
+        bookingService.deleteBooking(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("Booking deleted successfully", null));
+    }
+
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<ApiResponse<Object>> handleNotFound(NoSuchElementException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

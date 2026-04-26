@@ -179,4 +179,19 @@ public class BookingService {
         dto.setAdminNotes(booking.getAdminNotes());
         return dto;
     }
+
+    public void deleteBooking(String id, String userId) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Booking not found with id: " + id));
+
+        if (!booking.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("You can only delete your own bookings");
+        }
+
+        if (booking.getStatus() != BookingStatus.CANCELLED && booking.getStatus() != BookingStatus.REJECTED) {
+            throw new IllegalArgumentException("Only cancelled or rejected bookings can be deleted");
+        }
+
+        bookingRepository.delete(booking);
+    }
 }
